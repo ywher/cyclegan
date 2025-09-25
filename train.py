@@ -27,6 +27,19 @@ from util.visualizer import Visualizer
 from util.util import init_ddp, cleanup_ddp
 
 
+def format_time(seconds):
+    """格式化时间显示（秒转换为时分秒格式）"""
+    hours = int(seconds // 3600)
+    minutes = int((seconds % 3600) // 60)
+    seconds = int(seconds % 60)
+    if hours > 0:
+        return f"{hours}h {minutes}m {seconds}s"
+    elif minutes > 0:
+        return f"{minutes}m {seconds}s"
+    else:
+        return f"{seconds}s"
+
+
 if __name__ == "__main__":
     opt = TrainOptions().parse()  # get training options
     opt.device = init_ddp()
@@ -38,6 +51,14 @@ if __name__ == "__main__":
     model.setup(opt)  # regular setup: load and print networks; create schedulers
     visualizer = Visualizer(opt)  # create a visualizer that display/save images and plots
     total_iters = 0  # the total number of training iterations
+    
+    # 添加训练时间统计变量
+    training_start_time = time.time()  # 训练开始时间
+    total_epochs = opt.n_epochs + opt.n_epochs_decay  # 总训练轮数
+    completed_epochs = 0  # 已完成的轮数
+    
+    print(f"开始训练，总共需要训练 {total_epochs} 轮")
+    
     for epoch in range(opt.epoch_count, opt.n_epochs + opt.n_epochs_decay + 1):
         epoch_start_time = time.time()  # timer for entire epoch
         iter_data_time = time.time()  # timer for data loading per iteration
@@ -83,5 +104,29 @@ if __name__ == "__main__":
             model.save_networks(epoch)
 
         print(f"End of epoch {epoch} / {opt.n_epochs + opt.n_epochs_decay} \t Time Taken: {time.time() - epoch_start_time:.0f} sec")
+        
+        # 计算并显示预计剩余训练时间
+        completed_epochs += 1
+        current_time = time.time()
+        elapsed_time = current_time - training_start_time
+        
+        if completed_epochs > 0:
+            avg_time_per_epoch = elapsed_time / completed_epochs
+            remaining_epochs = total_epochs - completed_epochs
+            estimated_remaining_time = avg_time_per_epoch * remaining_epochs
+            
+            elapsed_str = format_time(elapsed_time)
+            remaining_str = format_time(estimated_remaining_time)
+            
+            print(f"训练进度: {completed_epochs}/{total_epochs} ({100*completed_epochs/total_epochs:.1f}%)")
+            print(f"已用时间: {elapsed_str} | 预计剩余时间: {remaining_str}")
+            print("-" * 60)
 
+    # 训练完成后的总结
+    total_training_time = time.time() - training_start_time
+    total_time_str = format_time(total_training_time)
+    print("=" * 60)
+    print(f"训练完成！总用时: {total_time_str}")
+    print("=" * 60)
+    
     cleanup_ddp()
