@@ -59,6 +59,11 @@ if __name__ == "__main__":
     
     print(f"开始训练，总共需要训练 {total_epochs} 轮")
     
+    # 将训练开始信息写入日志
+    start_time_str = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(training_start_time))
+    with open(visualizer.log_name, "a") as log_file:
+        log_file.write(f"[训练开始] 开始时间: {start_time_str}, 总轮数: {total_epochs}\n")
+    
     for epoch in range(opt.epoch_count, opt.n_epochs + opt.n_epochs_decay + 1):
         epoch_start_time = time.time()  # timer for entire epoch
         iter_data_time = time.time()  # timer for data loading per iteration
@@ -115,18 +120,37 @@ if __name__ == "__main__":
             remaining_epochs = total_epochs - completed_epochs
             estimated_remaining_time = avg_time_per_epoch * remaining_epochs
             
+            # 计算预计结束时间
+            estimated_end_time = current_time + estimated_remaining_time
+            end_time_str = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(estimated_end_time))
+            
             elapsed_str = format_time(elapsed_time)
             remaining_str = format_time(estimated_remaining_time)
             
-            print(f"训练进度: {completed_epochs}/{total_epochs} ({100*completed_epochs/total_epochs:.1f}%)")
-            print(f"已用时间: {elapsed_str} | 预计剩余时间: {remaining_str}")
-            print("-" * 60)
+            progress_message = (f"训练进度: {completed_epochs}/{total_epochs} ({100*completed_epochs/total_epochs:.1f}%) | "
+                             f"已用时间: {elapsed_str} | 预计剩余时间: {remaining_str} | "
+                             f"预计结束时间: {end_time_str}")
+            
+            print(progress_message)
+            print("-" * 80)
+            
+            # 将训练进度信息写入日志文件
+            with open(visualizer.log_name, "a") as log_file:
+                log_file.write(f"[训练进度统计] {progress_message}\n")
 
     # 训练完成后的总结
     total_training_time = time.time() - training_start_time
     total_time_str = format_time(total_training_time)
-    print("=" * 60)
-    print(f"训练完成！总用时: {total_time_str}")
-    print("=" * 60)
+    completion_time_str = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
+    
+    completion_message = f"训练完成！总用时: {total_time_str}, 完成时间: {completion_time_str}"
+    print("=" * 80)
+    print(completion_message)
+    print("=" * 80)
+    
+    # 将训练完成信息写入日志
+    with open(visualizer.log_name, "a") as log_file:
+        log_file.write(f"[训练完成] {completion_message}\n")
+        log_file.write("=" * 80 + "\n")
     
     cleanup_ddp()
